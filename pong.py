@@ -149,18 +149,130 @@ def keyup(event):
 
 init()
 
+@tool
+def move_up() -> None:
+    """
+    This tool moves the paddle up
+    Returns: 
+        None
+    """
+    global paddle1_vel
+    print("moving the paddle up...")
+    paddle1_vel = -8
+
+@tool
+def move_down() -> None:
+    """
+    This tool moves the paddle down
+    Returns: 
+        None
+    """
+    global paddle1_vel
+    print("moving the paddle down...")
+    paddle1_vel = 8
+
+@tool
+def stop_paddle() -> None:
+    """
+    This tool stops paddle movement
+    Returns: 
+        None
+    """
+    global paddle1_vel
+    print("Stopping paddle...")
+    paddle1_vel = 0
+
+@tool
+def get_ball_position() -> list:
+    """
+    This tool gets the position of the ball
+    Returns: 
+        list: The position of the ball
+    """
+    global ball_pos
+    print("Getting ball position...")
+    print(f"Ball position{ball_pos[1]}")
+    return ball_pos[1]
+
+@tool
+def get_paddle_position() -> list:
+    """
+    This tool gets the position of the paddle
+    Returns: 
+        list: The position of the paddle
+    """
+    global paddle1_pos
+    print(f"Paddle position{paddle1_pos[1]}")
+    return paddle1_pos[1]
+
+def pong_agent():
+    """Create a React agent with the specified tools."""
+    chat = ChatOpenAI(temperature=0, model="gpt-4o")
+    print("pong agent running...")
+
+    system_prompt = f"""
+    You are an agent that can use the following tools to play a game of pong:
+    - move_up: This tool moves the paddle up
+    - move_down: This tool moves the paddle down
+    - stop_paddle: This tool stops paddle movement
+    - get_ball_position: This tool gets the position of the ball
+    - get_paddle_position: This tool gets the position of the paddle
+
+    Your task is to determine the best move for the paddle, based on the ball position.
+    The following are rules you must follow in order to find the best move for the paddle:
+        - If the value returned from get_ball_position is lower than the value returned from get_paddle_position move up using the move_up tool.
+        - If the value returned from get_ball_position is higher than the value returned from get_paddle_position move down using the move_down tool.
+        - After a brief amount of time, (0.25 seconds) stop the paddle using the stop_paddle tool.
+    """
+
+    tools = [
+        move_up,
+        move_down,
+        stop_paddle,
+        get_ball_position,
+        get_paddle_position
+    ]
+
+    return create_react_agent(
+        model=chat,
+        tools=tools,
+        prompt=system_prompt,
+        checkpointer=MemorySaver(),
+    )
+
 
 if __name__ == "__main__":
-    while True:
-        draw(window)
-        for event in pygame.event.get():
-            if event.type == KEYDOWN:
-                keydown(event)
-            elif event.type == KEYUP:
-                keyup(event)
-            elif event.type == QUIT:
-                pygame.quit()
-                sys.exit()
+    agent = pong_agent()
 
-        pygame.display.update()
-        fps.tick(30) 
+    config = {
+        "configurable": {
+            "thread_id": 42,
+            "recursion_limit": 25
+        }
+    }  
+
+    # asynchronously invoke the agent
+    def invoke_agent():
+        """Function to invoke the agent asynchronously in a separate thread."""
+        agent.invoke({"messages": ["start"]}, config=config)
+
+    invoke_agent_counter = 0
+
+while True:
+    draw(window)
+    if invoke_agent_counter % 10 == 0:
+        agent_thread = threading.Thread(target=invoke_agent, daemon=True)
+        agent_thread.start()
+        
+    for event in pygame.event.get():
+        if event.type == KEYDOWN:
+            keydown(event)
+        elif event.type == KEYUP:
+            keyup(event)
+        elif event.type == QUIT:
+            pygame.quit()
+            sys.exit()
+
+    pygame.display.update()
+    invoke_agent_counter += 1
+    fps.tick(30) 
