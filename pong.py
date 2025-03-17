@@ -1,11 +1,17 @@
-#PONG pygame
-
 import random
 import pygame, sys
 from pygame.locals import *
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
+from langgraph.checkpoint.memory import MemorySaver
+from langchain_core.tools import tool
+import threading
+
 
 pygame.init()
 fps = pygame.time.Clock()
+load_dotenv(override=True)
 
 #colors
 WHITE = (255,255,255)
@@ -30,7 +36,7 @@ r_score = 0
 
 #canvas declaration
 window = pygame.display.set_mode((WIDTH, HEIGHT), 0, 32)
-pygame.display.set_caption('Hello World')
+pygame.display.set_caption('Pong')
 
 # helper function that spawns a ball, returns a position vector and a velocity vector
 # if right is True, spawn to the right, else spawn to the left
@@ -127,41 +133,34 @@ def draw(canvas):
     
 #keydown handler
 def keydown(event):
-    global paddle1_vel, paddle2_vel
+    global paddle2_vel
     
     if event.key == K_UP:
         paddle2_vel = -8
     elif event.key == K_DOWN:
         paddle2_vel = 8
-    elif event.key == K_w:
-        paddle1_vel = -8
-    elif event.key == K_s:
-        paddle1_vel = 8
 
 #keyup handler
 def keyup(event):
-    global paddle1_vel, paddle2_vel
+    global paddle2_vel
     
-    if event.key in (K_w, K_s):
-        paddle1_vel = 0
-    elif event.key in (K_UP, K_DOWN):
+    if event.key in (K_UP, K_DOWN):
         paddle2_vel = 0
 
 init()
 
 
-#game loop
-while True:
-    draw(window)
+if __name__ == "__main__":
+    while True:
+        draw(window)
+        for event in pygame.event.get():
+            if event.type == KEYDOWN:
+                keydown(event)
+            elif event.type == KEYUP:
+                keyup(event)
+            elif event.type == QUIT:
+                pygame.quit()
+                sys.exit()
 
-    for event in pygame.event.get():
-        if event.type == KEYDOWN:
-            keydown(event)
-        elif event.type == KEYUP:
-            keyup(event)
-        elif event.type == QUIT:
-            pygame.quit()
-            sys.exit()
-            
-    pygame.display.update()
-    fps.tick(60)
+        pygame.display.update()
+        fps.tick(30) 
